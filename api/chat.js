@@ -1,4 +1,44 @@
 import fetch from "node-fetch";
+
+export default async function handler(req, res) {
+  // CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST")
+    return res.status(405).json({ error: "Method not allowed" });
+
+  const { question } = req.body;
+  if (!question) return res.status(400).json({ error: "Question required" });
+
+  try {
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        max_tokens: 1000,
+        messages: [
+          { role: "system", content: CTX },
+          { role: "user", content: question },
+        ],
+      }),
+    });
+
+    const d = await r.json();
+    const reply = d.choices?.[0]?.message?.content || "Maaf, ada error!";
+    return res.status(200).json({ reply });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
+
 const CTX = `Kamu adalah AI asisten portfolio milik Agung Purnomo, Fullstack Developer & Cloud Engineer dari Indonesia. Jawab dalam bahasa Indonesia, ramah, dan informatif.
 
 === IDENTITAS & KONTAK ===
@@ -62,42 +102,3 @@ UNINDRA: Seminar Nasional Ristek 2026.
 - UI/UX Design: Rp 200.000
 - Cloud Setup & Deploy: Rp 800.000
 Hubungi via WhatsApp: 085129443403`;
-
-export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST")
-    return res.status(405).json({ error: "Method not allowed" });
-
-  const { question } = req.body;
-  if (!question) return res.status(400).json({ error: "Question required" });
-
-  try {
-    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 1000,
-        messages: [
-          { role: "system", content: CTX },
-          { role: "user", content: question },
-        ],
-      }),
-    });
-
-    const d = await r.json();
-    const reply = d.choices?.[0]?.message?.content || "Maaf, ada error!";
-    return res.status(200).json({ reply });
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-}
